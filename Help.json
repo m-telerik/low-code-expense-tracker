@@ -1,0 +1,790 @@
+ {
+  "createdAt": "",
+  "updatedAt": "",
+  "id": "",
+  "name": "5.Help",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Load user profile data including plan, base_currency, allowed_currencies, locale, and other settings. ... [REDACTED]",
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "profiles",
+          "mode": "list",
+          "cachedResultName": "profiles"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "telegram_id",
+              "value": "={{ $json.response_metadata.telegram_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -176,
+        288
+      ],
+      "id": "b09d0ae4-e1fd-4f07-9fd6-184d099aacb6",
+      "name": "get-user-info",
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        -48
+      ],
+      "id": "653318bf-9d36-4cc0-b4f6-90d5cc8c0418",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\"output\"],\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"required\": [\"content\", \"response_metadata\"],\n      \"properties\": {\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"User-facing response message in user's language\"\n        },\n        \"response_metadata\": {\n          \"type\": \"object\",\n          \"required\": [\"telegram_id\", \"user_id\", \"tool_success\", \"error\", \"topic\", \"mode\", \"language\"],\n          \"properties\": {\n            \"telegram_id\": {\n              \"type\": \"number\",\n              \"description\": \"User's Telegram ID from input data\"\n            },\n            \"user_id\": {\n              \"type\": [\"string\", \"null\"],\n              \"description\": \"User's internal UUID from get-user-info or null\"\n            },\n            \"tool_success\": {\n              \"type\": \"boolean\",\n              \"description\": \"Whether the help request was processed successfully\"\n            },\n            \"error\": {\n              \"type\": \"boolean\",\n              \"description\": \"Whether an error occurred\"\n            },\n            \"ops_message\": {\n              \"type\": [\"string\", \"null\"],\n              \"description\": \"Technical error details for developers (only when error: true)\"\n            },\n            \"topic\": {\n              \"type\": \"string\",\n              \"description\": \"Classification of the help request type\",\n              \"examples\": [\"incomplete_txn\", \"account_currency_limit\", \"delete_transaction\", \"voice_input\", \"bot_silent\", \"feature_request\", \"support\"]\n            },\n            \"mode\": {\n              \"type\": \"string\",\n              \"description\": \"How the agent handled the request\",\n              \"examples\": [\"clarify\", \"informative\", \"forward\", \"guide\", \"error\"]\n            },\n            \"language\": {\n              \"type\": \"string\",\n              \"description\": \"Detected language of user's message\",\n              \"pattern\": \"^[a-z]{2}$\",\n              \"examples\": [\"en\", \"ru\", \"es\", \"de\", \"fr\", \"it\", \"pt\", \"zh\", \"ja\", \"ar\"]\n            },\n            \"examples_provided\": {\n              \"type\": [\"array\", \"null\"],\n              \"items\": {\n                \"type\": \"string\"\n              },\n              \"description\": \"List of transaction format examples provided to user\"\n            },\n            \"suggested_actions\": {\n              \"type\": [\"array\", \"null\"],\n              \"items\": {\n                \"type\": \"string\"\n              },\n              \"description\": \"Specific actions user can take to resolve their issue\"\n            }\n          },\n          \"additionalProperties\": false,\n          \"allOf\": [\n            {\n              \"if\": {\n                \"properties\": {\n                  \"error\": { \"const\": true }\n                }\n              },\n              \"then\": {\n                \"required\": [\"ops_message\"]\n              }\n            }\n          ]\n        }\n      }\n    }\n  },\n  \"additionalProperties\": false\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        288
+      ],
+      "id": "7f88777d-3f14-4833-b4fc-5c285533a76d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=user message: {{ $json.content }}\ntelegram_id: {{ $json.response_metadata.telegram_id }}\nplan: {{ $json.response_metadata.plan }}\nlanguage: {{ $json.response_metadata.locale }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a Cashie Help Agent providing first-line support for the personal expense tracking Telegram bot...[REDACTED: Detailed AI agent instructions for customer support]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        64
+      ],
+      "id": "11c6c661-d106-466b-9ff6-736f53dfeb6f",
+      "name": "Cashie.Help",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.response_metadata.telegram_id }}",
+        "contextWindowLength": 4
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        288
+      ],
+      "id": "7c31a2a1-a860-4b24-a839-b8114226e086",
+      "name": "memory",
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Access comprehensive FAQ documentation from GitHub repository. ... [REDACTED]",
+        "resource": "file",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "m-telerik",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "https://github.com/m-telerik/cashie",
+          "mode": "url"
+        },
+        "filePath": "docs/user_docs/cashie_faq.md",
+        "additionalParameters": {}
+      },
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        288
+      ],
+      "id": "",
+      "name": "get_faq",
+      "webhookId": "",
+      "credentials": {
+        "githubApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "type"
+            },
+            {
+              "name": "content"
+            },
+            {
+              "name": "response_metadata",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        -128
+      ],
+      "id": "ff221509-2d93-443b-8e6d-cbbb2c3b695c",
+      "name": "by Another Workflow"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        288
+      ],
+      "id": "9ea75d6f-557d-43e6-90eb-2d461b33f345",
+      "name": "gpt-4o",
+      "credentials": {
+        "openRouterApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Forward user requests directly to developers when FAQ cannot help. \n'content': provide brief summary of user's request/problem. \n'response_metadata': include telegram_id, plan, and other relevant user info from get-user-info.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/",
+          "cachedResultName": "80.Ops"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "cashie-help",
+            "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('content', ``, 'string') }}",
+            "response_metadata": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('response_metadata', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "response_metadata",
+              "displayName": "response_metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        288
+      ],
+      "id": "4c2c7e0a-5416-414f-b46b-ccf64a8886f3",
+      "name": "call_cashie_ops"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2cd97499-2b14-46e2-9589-bfdf2c7fa0a4",
+              "leftValue": "={{ $json.content }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -656,
+        -128
+      ],
+      "id": "91b8795d-aa16-4db2-8915-a1601cc802c3",
+      "name": "start?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "U7mFjL6C5hhQBKCP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/U7mFjL6C5hhQBKCP",
+          "cachedResultName": "02.Error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "cashie-help",
+            "response_metadata": "={{ $json }}",
+            "content": "={{ $json.output.response_metadata.ops_message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "response_metadata",
+              "displayName": "response_metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        32
+      ],
+      "id": "5c1ed1eb-7553-4a9f-aa84-49659966bd82",
+      "name": "🆘 Call Error"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "tH2cgzujXWsNrKPi",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/tH2cgzujXWsNrKPi",
+          "cachedResultName": "05.Reply"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "={{ $json.type }}",
+            "content": "=Welcome back, Mr. Anderson 🕶️",
+            "response_metadata": "={{ $json.response_metadata }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "response_metadata",
+              "displayName": "response_metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        -336
+      ],
+      "id": "a6583c99-1877-4133-8d44-a547d41ce398",
+      "name": "💬 Welcome back, Mr. Anderson 🕶️"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "tH2cgzujXWsNrKPi",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/tH2cgzujXWsNrKPi",
+          "cachedResultName": "05.Reply"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "=cashie-help",
+            "content": "={{ $json.output.content }}",
+            "response_metadata": "={{ $json.output.response_metadata }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "response_metadata",
+              "displayName": "response_metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        -48
+      ],
+      "id": "8c75890b-ae31-4088-8ee2-54d0bd5c189c",
+      "name": "💬 Call 'Cashie.Reply'"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0bec9722-01f2-4499-b4c4-b30ba6ec75fa",
+              "leftValue": "={{ $json.output.response_metadata.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        -48
+      ],
+      "id": "99f9fa66-50eb-4854-9835-cb4a75012696",
+      "name": "error=false?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "U7mFjL6C5hhQBKCP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/U7mFjL6C5hhQBKCP",
+          "cachedResultName": "02.Error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "cashie-help",
+            "content": "={{ $json.error }}",
+            "response_metadata": "={{ $json }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "response_metadata",
+              "displayName": "response_metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        208
+      ],
+      "id": "49b3c0dd-a6c5-4903-a786-a4c4a8a1e6c2",
+      "name": "🆘 Call Error1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        176,
+        480
+      ],
+      "id": "",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    }
+  ],
+  "connections": {
+    "get-user-info": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cashie.Help": {
+      "main": [
+        [
+          {
+            "node": "error=false?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🆘 Call Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_faq": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "start?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "call_cashie_ops": {
+      "ai_tool": [
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "start?": {
+      "main": [
+        [
+          {
+            "node": "💬 Welcome back, Mr. Anderson 🕶️",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cashie.Help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆘 Call Error": {
+      "main": [
+        [
+          {
+            "node": "💬 Call 'Cashie.Reply'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 Welcome back, Mr. Anderson 🕶️": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 Call 'Cashie.Reply'": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error=false?": {
+      "main": [
+        [
+          {
+            "node": "💬 Call 'Cashie.Reply'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🆘 Call Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆘 Call Error1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
