@@ -14,7 +14,17 @@ To solve the personal pain point of tracking expenses while fifth immigration an
 ---
 ## 📊 Architecture
 
+
+> [!warning]
+> This high-level overview focuses specifically on the Router → Media → Help workflow chain. The full Cashie architecture includes additional specialized micro-workflows for:
+> - **Transaction Processing** with automatic currency conversion at database level and AI-powered categorization
+> - **User Analytics & Spending Insights** with personalized reports and trend analysis
+> - **Error Handling & Ops Agent** for 24/7 system monitoring and automatic alerting
+> - **User Onboarding & Education** with interactive setup flows
+> - **Message Localization** supporting multiple languages and regional formats
+
 The system is built around n8n as the core orchestration layer. It handles incoming webhooks from the Telegram Bot API, routes requests to specialized sub-workflows, and interacts with a Supabase PostgreSQL database for persistence. AI services (OpenAI, Gemini) are integrated for processing unstructured data like voice messages and receipt images.
+
 
 ```mermaid
 flowchart TD
